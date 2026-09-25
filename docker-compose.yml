@@ -1,0 +1,38 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: billo
+      POSTGRES_USER: billo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-this-password}
+    volumes:
+      - billo_postgres:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-billo.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U billo -d billo"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://billo:${POSTGRES_PASSWORD:-change-this-password}@db:5432/billo
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your environment}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,https://billo.com,https://www.billo.com}
+    ports:
+      - "3000:3000"
+    volumes:
+      - billo_vouchers:/app/server/data/vouchers
+
+volumes:
+  billo_postgres:
+  billo_vouchers:
