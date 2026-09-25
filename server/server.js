@@ -669,7 +669,24 @@ app.use((error, _req, res, _next) => {
   return res.status(500).json({ error: "An unexpected server error occurred." });
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`Billo API is listening on http://localhost:${port}`);
-});
+async function initializeDatabase() {
+  const schemaPath = path.join(__dirname, "..", "database", "schema.sql");
+  const schema = fs.readFileSync(schemaPath, "utf8");
+  await pool.query(schema);
+  console.log("Billo PostgreSQL schema is ready.");
+}
+
+async function startServer() {
+  try {
+    await initializeDatabase();
+    app.listen(port, "0.0.0.0", () => {
+      console.log(`Billo API is listening on http://localhost:${port}`);
+    });
+  } catch (error) {
+    console.error("Billo server could not initialize the database.", error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
