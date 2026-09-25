@@ -1,26 +1,75 @@
-# Billo local server
+# Billo API + PostgreSQL
 
-This API uses the local PostgreSQL database named `billo`. It supplies role-based
-access to the merchant and admin data, as well as private voucher file storage.
+The repository now includes a PostgreSQL-backed Billo API for shared merchant and
+administrator data.
 
-## Start it
+## Database
 
-1. Copy `.env.example` to `.env` and set `JWT_SECRET` to a long random value
-   before allowing any network access.
-2. Run `npm install`.
-3. Run `npm start`.
-4. Visit `http://localhost:3000/health`.
+The schema is in `database/schema.sql`. It creates:
 
-## First admin
+- administrators and merchant accounts
+- merchant settings
+- products and customers
+- invoices and invoice items
+- transactions
+- subscription plans and subscription payments
+- voucher-file metadata
+- administrator audit logs
+
+The default subscription plans are seeded as 1 month (Rs 200), 3 months (Rs 500),
+and 12 months (Rs 2000).
+
+## Run locally with Docker
+
+1. Set a strong `POSTGRES_PASSWORD` and `JWT_SECRET` in your shell/environment.
+2. Run:
+
+```bash
+docker compose up -d --build
+```
+
+3. Check:
+
+`http://localhost:3000/health`
+
+The PostgreSQL data is persisted in the `billo_postgres` Docker volume and voucher
+files are persisted in `billo_vouchers`.
+
+## Run without Docker
+
+Install PostgreSQL, create a database named `billo`, then set:
+
+```
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/billo
+JWT_SECRET=your-long-random-secret
+ALLOWED_ORIGINS=https://billo.com,https://www.billo.com
+PORT=3000
+```
+
+Then:
+
+```bash
+cd server
+npm install
+npm start
+```
+
+The server automatically loads `database/schema.sql` before listening.
+
+## First administrator
 
 When no administrator exists, call `POST /api/setup/admin` with a name, email,
-and password. The route is permanently disabled after the first administrator
-account is created.
+and password of at least 10 characters. The route is permanently disabled after
+the first administrator is created.
 
-## Important
+## Important deployment note
 
-GitHub Pages is HTTPS. A browser will block a call from the published Pages site
-to an ordinary `http://` API on this laptop. For use beyond this computer, put
-the API behind an HTTPS reverse proxy or secure tunnel, and then set its public
-HTTPS URL in the website configuration. Do not expose PostgreSQL directly.
+GitHub stores the code; GitHub Pages does **not** run the Node.js API or provide a
+persistent PostgreSQL database. For billo.com to use this shared database in
+production, deploy the Dockerized API and PostgreSQL on a server/database host
+(or a managed PostgreSQL service), then point the website's API configuration at
+the API's HTTPS URL.
 
+Never commit `.env`, database passwords, JWT secrets, bank credentials, or other
+private credentials to the repository. Never expose PostgreSQL directly to the
+public internet.
